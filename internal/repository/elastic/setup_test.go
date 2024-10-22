@@ -1,0 +1,106 @@
+package elastic_test
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"github.com/elastic/go-elasticsearch/v8"
+	"github.com/elastic/go-elasticsearch/v8/typedapi/indices/putmapping"
+	"github.com/elastic/go-elasticsearch/v8/typedapi/types"
+	"github.com/stretchr/testify/require"
+	"github.com/testcontainers/testcontainers-go"
+	tce "github.com/testcontainers/testcontainers-go/modules/elasticsearch"
+	"testing"
+)
+
+func startTestContainer(t *testing.T, login, password string) (string, func()) {
+	t.Helper()
+
+	ctx := context.Background()
+
+	container, err := tce.Run(
+		ctx,
+		"docker.elastic.co/elasticsearch/elasticsearch:8.15.3",
+		testcontainers.WithEnv(map[string]string{
+			"ELASTIC_USERNAME":       login,
+			"ELASTIC_PASSWORD":       password,
+			"discovery.type":         "single-node",
+			"xpack.security.enabled": "false",
+		}),
+	)
+
+	if err != nil {
+		t.Fatalf("failed to start container: %v", err)
+	}
+
+	host, err := container.Host(ctx)
+	require.NoError(t, err)
+	port, err := container.MappedPort(ctx, "9200")
+	require.NoError(t, err)
+
+	teardown := func() {
+		if err := testcontainers.TerminateContainer(container); err != nil {
+			t.Fatalf("failed to terminate container: %s", err)
+		}
+	}
+	return fmt.Sprintf("http://%s:%s", host, port.Port()), teardown
+}
+
+func getClient(t *testing.T, host, username, password string) *elasticsearch.TypedClient {
+	var err error
+	t.Helper()
+	cfg := elasticsearch.Config{
+		Addresses: []string{
+			host,
+		},
+		Username: username,
+		Password: password,
+	}
+
+	client, err := elasticsearch.NewTypedClient(cfg)
+	if err != nil {
+		t.Fatalf("failed to client init: %s", err)
+	}
+
+	return client
+}
+
+func createIndex(t *testing.T, client *elasticsearch.TypedClient, indexName string) {
+	var err error
+	t.Helper()
+
+	_, err = client.Indices.Create(indexName).Do(context.Background())
+	if err != nil {
+		t.Fatalf("failed to index: %s", err)
+	}
+}
+
+func setMapping(t *testing.T, client *elasticsearch.TypedClient, indexName string, mappingString string) {
+	var err error
+	t.Helper()
+
+	var mapping types.TypeMapping
+	err = json.Unmarshal([]byte(mappingString), &mapping)
+	if err != nil {
+		t.Fatalf("failed to create mapping struct: %s", err)
+	}
+
+	_, err = client.Indices.PutMapping(indexName).Request(&putmapping.Request{
+		Properties: mapping.Properties,
+	}).Do(context.Background())
+
+	if err != nil {
+		t.Fatalf("failed to create mapping struct: %s", err)
+	}
+}
+
+func removeAllFromIndex(t *testing.T, client *elasticsearch.TypedClient, indexName string) {
+	//var err error
+	t.Helper()
+
+	//_, err = client.Index(indexName)
+	//if err != nil {
+	//	t.Fatalf("failed to delete index: %s", err)
+	//}
+
+}
