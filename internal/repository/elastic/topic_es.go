@@ -26,5 +26,4 @@ func (t TopicRepository) GetById(id string) (*domain.Topic, error) {
 		return nil, err
 	}
 	return &topic, nil
-
 }

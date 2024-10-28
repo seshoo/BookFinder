@@ -5,11 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/elastic/go-elasticsearch/v8"
+	"github.com/elastic/go-elasticsearch/v8/typedapi/core/deletebyquery"
 	"github.com/elastic/go-elasticsearch/v8/typedapi/indices/putmapping"
 	"github.com/elastic/go-elasticsearch/v8/typedapi/types"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	tce "github.com/testcontainers/testcontainers-go/modules/elasticsearch"
+	"log"
 	"testing"
 )
 
@@ -95,12 +97,18 @@ func setMapping(t *testing.T, client *elasticsearch.TypedClient, indexName strin
 }
 
 func removeAllFromIndex(t *testing.T, client *elasticsearch.TypedClient, indexName string) {
-	//var err error
 	t.Helper()
+	req := deletebyquery.Request{
+		Query: &types.Query{
+			MatchAll: &types.MatchAllQuery{},
+		},
+	}
 
-	//_, err = client.Index(indexName)
-	//if err != nil {
-	//	t.Fatalf("failed to delete index: %s", err)
-	//}
+	// Выполняем запрос
+	res, err := client.Core.DeleteByQuery(indexName).Request(&req).Do(context.Background())
+	if err != nil {
+		log.Fatalf("Аф: %v", err)
+	}
 
+	_ = res
 }

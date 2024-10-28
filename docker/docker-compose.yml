@@ -5,10 +5,10 @@ services:
     container_name: ${PROJECT_NAME}-elasticsearch
     image: elasticsearch:8.15.3
     volumes:
-      - ./data/elasticsearch:/usr/share/elasticsearch/data
+      - ./../data/elasticsearch:/usr/share/elasticsearch/data
     ports:
-      - "9200:9200"
-      - "9300:9300"
+      - "9201:9200"
+#      - "9300:9300"
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=false
